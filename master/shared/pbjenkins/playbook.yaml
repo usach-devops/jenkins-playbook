@@ -1,0 +1,44 @@
+---
+- name: Instalación Jenkins
+  hosts: all
+  tasks:
+    - name: Actualizando los repositorios APT
+      become: true
+      apt:
+        update_cache: yes
+
+    - name: Instalando OpenJDK
+      become: yes
+      apt:
+        name: "openjdk-8-jdk"
+        state: present
+      with_items: openjdk-8-jdk
+
+    - name: Asegurando que el repository key de jenkins esté instalado
+      apt_key: url=https://pkg.jenkins.io/debian-stable/jenkins.io.key state=present
+      become: yes
+
+    - name: Asegurando que el repositorio esté configurado
+      apt_repository: repo='deb https://pkg.jenkins.io/debian-stable binary/' state=present
+      become: yes
+
+    - name: Asegurando que Jenkins esté instalado
+      apt: name=jenkins update_cache=yes
+      become: yes
+
+    - name: Asegurando que Jenkins esté corriendo
+      service: name=jenkins state=started
+
+    - name: Sleep por 30 segundos (esperando creación de password inicial Jenkins)
+      wait_for: timeout=30
+      delegate_to: localhost
+
+    - name: Consultado el password inicial de Jenkins
+      shell: cat /var/lib/jenkins/secrets/initialAdminPassword
+      changed_when: false
+      register: result
+      become: yes
+
+    - name: Imprimiendo en pantalla el password de Jenkins
+      debug:
+        var: result.stdout
